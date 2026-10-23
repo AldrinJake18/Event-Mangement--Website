@@ -1,0 +1,134 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Management System - Authentication Test</title>
+</head>
+<body>
+  <h1>Event Management System</h1>
+  <p>Test Google and GitHub authentication with Supabase.</p>
+
+  <button id="googleLogin">Sign in with Google</button>
+  <button id="githubLogin">Sign in with GitHub</button>
+  <button id="signOut" hidden>Sign out</button>
+
+  <p id="status">Checking login status...</p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    // Supabase project information
+    const SUPABASE_URL =
+      "https://ccgpitcihwvzbfnjhdvw.supabase.co";
+
+    const SUPABASE_PUBLISHABLE_KEY =
+      "sb_publishable_6TWjR120S3bZdi6Z3sYAMQ_V895kau1";
+
+    // Connect to Supabase
+    const client = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
+
+    // Get HTML elements
+    const status = document.getElementById("status");
+    const googleButton = document.getElementById("googleLogin");
+    const githubButton = document.getElementById("githubLogin");
+    const signOutButton = document.getElementById("signOut");
+
+    // Sign in with Google
+    googleButton.addEventListener("click", async () => {
+      status.textContent = "Redirecting to Google...";
+
+      const { error } = await client.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + window.location.pathname
+        }
+      });
+
+      if (error) {
+        status.textContent = "Google login error: " + error.message;
+      }
+    });
+
+    // Sign in with GitHub
+    githubButton.addEventListener("click", async () => {
+      status.textContent = "Redirecting to GitHub...";
+
+      const { error } = await client.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: window.location.origin + window.location.pathname
+        }
+      });
+
+      if (error) {
+        status.textContent = "GitHub login error: " + error.message;
+      }
+    });
+
+    // Sign out
+    signOutButton.addEventListener("click", async () => {
+      signOutButton.disabled = true;
+      status.textContent = "Signing out...";
+
+      const { error } = await client.auth.signOut();
+
+      signOutButton.disabled = false;
+
+      if (error) {
+        status.textContent = "Sign-out error: " + error.message;
+        return;
+      }
+
+      status.textContent = "Signed out successfully.";
+      updateInterface(null);
+    });
+
+    // Show the correct buttons for the current login status
+    function updateInterface(user) {
+      if (user) {
+        status.textContent =
+          "Signed in as: " + (user.email || user.id);
+
+        googleButton.hidden = true;
+        githubButton.hidden = true;
+        signOutButton.hidden = false;
+      } else {
+        googleButton.hidden = false;
+        githubButton.hidden = false;
+        signOutButton.hidden = true;
+      }
+    }
+
+    // Check the current session
+    async function checkLogin() {
+      const { data, error } = await client.auth.getUser();
+
+      if (error || !data.user) {
+        updateInterface(null);
+        return;
+      }
+
+      updateInterface(data.user);
+    }
+
+    // Listen for authentication changes
+    client.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") {
+        updateInterface(session ? session.user : null);
+      } else if (event === "SIGNED_IN") {
+        updateInterface(session ? session.user : null);
+      } else if (event === "SIGNED_OUT") {
+        updateInterface(null);
+      }
+    });
+
+    // Initialize the page
+    checkLogin();
+  </script>
+</body>
+</html>
